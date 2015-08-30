@@ -1,0 +1,11 @@
+{
+	"name": "trading",
+	"version": "0.0.1",
+	"description": "simple module",
+	"author": "Juan Carlos Calvo <jcav22@gmail.com>",
+	"dependencies": {
+		"httpdispatcher": "*",
+		"socket.io": "*",
+		"toobusy": "*"
+	}
+}
