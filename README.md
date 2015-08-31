@@ -5,9 +5,13 @@ Frontend: front-50792.onmodulus.net
 
 Example of POST message in file test_server.js
 
-Further implementations:
--Security
--Testing
+Technology stack:
+-Node.js
+-Socket.io
 -MongoDB storage
--Redis Cache
--Multithreading in the server code
+
+Further implementations:
+-Cache with Redis
+-Split Receiver and Processor to achieve independent scalability
+-Improve Security
+-Automatic Tests
