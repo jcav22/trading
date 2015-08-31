@@ -3,25 +3,45 @@ var dispatcher = require('httpdispatcher'); // npm install httpdispatcher
 // Create a server and socket.io
 var server = http.createServer(handleRequest);
 var socket = require('socket.io').listen(server); // npm install socket.io
-var toobusy = require('toobusy');
-
-// var mongoClient = require('mongodb').MongoClient;
-// var mongoUrl = '';
+var mongoose = require('mongoose');
+//var toobusy = require('toobusy');
 
 const PORT = process.env.PORT || 8080;
 
-function handleRequest( request, response ) {
-    if ( toobusy() ) {
-        response.send(503, "The server is busy right now, sorry.");
+var db = mongoose.connection;
+var Transaction, transactionSchema;
 
-    } else {
-        try {
-            //console.log( "URL: %s", request.url );
-            dispatcher.dispatch( request, response );
-        } catch( err ) {
-            console.log( err );
-        }
+db.on( 'error', console.error );
+db.once( 'open', function() {
+    console.log( 'connected to DB' );
+    transactionSchema = new mongoose.Schema({
+        userId: String
+        , currencyFrom: String
+        , currencyTo: String
+        , amountSell: Number
+        , amountBuy: Number
+        , rate: Number
+        , timePlaced: String
+        , originatingCountry: String
+    });
+
+    Transaction = mongoose.model( 'Transaction', transactionSchema );
+});
+
+mongoose.connect('mongodb://trading:1234@waffle.modulusmongo.net:27017/pat3oHid');
+
+function handleRequest( request, response ) {
+    // if ( toobusy() ) {
+    //     response.send(503, "The server is busy right now, sorry.");
+    
+    // } else {
+    try {
+        console.log( "URL: %s", request.url );
+        dispatcher.dispatch( request, response );
+    } catch( err ) {
+        console.log( err );
     }
+    // }
 }
 
 // Start the server
@@ -31,39 +51,60 @@ server.listen( PORT, function() {
 
 // POST data request
 dispatcher.onPost( "/post1", function( req, res ) {
+    var reqObject, register;
     console.log( req.method + " to " + req.url );
     
     if ( req.body.length > 1e6 ) { // FLOOD ATTACK OR FAULTY CLIENT
         res.writeHead( 400, {'Content-Type': 'text/plain'} );
         res.end( 'Too Much Post Data' );
     }
-    
+
+    try {
+        reqObject = JSON.parse( req.body );
+        
+        if( isValidObj(reqObject) ) {
+            register = new Transaction({
+                userId:                 reqObject.userId
+                , currencyFrom:         reqObject.currencyFrom
+                , currencyTo:           reqObject.currencyTo
+                , amountSell:           reqObject.amountSell
+                , amountBuy:            reqObject.amountBuy
+                , rate:                 reqObject.rate
+                , timePlaced:           reqObject.timePlaced
+                , originatingCountry:   reqObject.originatingCountry
+            });
+            
+            register.save( function( err, register ) {
+                if ( err ) return console.error( err );
+            });
+            
+            messageProcessor( reqObject );
+        }
+
+    } catch ( e ) {
+        res.writeHead( 400, {'Content-Type': 'text/plain'} );
+        res.end( 'Unable to parse the Json object' );
+    }
+
     res.writeHead( 200, {'Content-Type': 'text/plain'} );
     res.end( 'Got Post Data' );
-    messageProcessor( JSON.parse( req.body ) );
 });
 
 var global = {};
-global.buy = {};    // total amount buyed per type
-global.sell = {};   // total amount selled per type
+global.buy = {};            // total amount buyed per type
+global.sell = {};           // total amount selled per type
 global.transactions = {};   // total transaction/exchange type
 global.countries = {};      // total transactions/country
 global.dataGraph = {};      // data for graph
 
 function messageProcessor( obj ) {
-    var exchangeType;
-    var amountSell, amountBuy;
-    var country;
+    var exchangeType, amountSell, amountBuy, country;
     var data = {};
 
-    if( /^[a-zA-Z]{3}/.test(obj.currencyFrom) && /^[a-zA-Z]{3}/.test(obj.currencyTo) )
-        exchangeType = String(obj.currencyFrom).toUpperCase() + "/" + String(obj.currencyTo).toUpperCase();
-    if( /^[a-zA-Z]{2}/.test(obj.originatingCountry) )
-        country = String(obj.originatingCountry).toUpperCase();
-    if( !isNaN(parseFloat(obj['amountSell'])) && isFinite(obj['amountSell']) )
-        amountSell = parseFloat(obj['amountSell']);
-    if( !isNaN(parseFloat(obj['amountBuy'])) && isFinite(obj['amountBuy']) )
-        amountBuy = parseFloat(obj['amountBuy']);
+    exchangeType = String(obj.currencyFrom).toUpperCase() + "/" + String(obj.currencyTo).toUpperCase();
+    country = String(obj.originatingCountry).toUpperCase();
+    amountSell = parseFloat(obj['amountSell']);
+    amountBuy = parseFloat(obj['amountBuy']);
 
     if( exchangeType && country && amountBuy && amountSell ) {
         // total/exchange type
@@ -99,8 +140,15 @@ function messageProcessor( obj ) {
 
 socket.on('connection', function(socket) {
     socket.on('getData', function(data) {
-        console.log("get from the client");
+        //console.log("get from the client");
         socket.emit('message', JSON.stringify(global));
     });
 });
 
+function isValidObj( obj ) {
+    return /^[a-zA-Z]{3}/.test(obj.currencyFrom) 
+            && /^[a-zA-Z]{3}/.test(obj.currencyTo) 
+            && /^[a-zA-Z]{2}/.test(obj.originatingCountry)
+            && !isNaN(parseFloat(obj['amountSell'])) && isFinite(obj['amountSell'])
+            && !isNaN(parseFloat(obj['amountBuy'])) && isFinite(obj['amountBuy']);
+}
