@@ -6,6 +6,6 @@
 	"dependencies": {
 		"httpdispatcher": "*",
 		"socket.io": "*",
-		"toobusy": "*"
+		"mongoose": "*"
 	}
 }
