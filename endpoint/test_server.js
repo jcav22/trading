@@ -19,9 +19,9 @@ var data4 = {"userId": "134258", "currencyFrom": "PES", "currencyTo": "EUR",
 var dataArray = [data1, data2, data3, data4]
 
 var options = {
-  //host: '127.0.0.1',
-  //port: 8080,
-  hostname: 'trading-50789.onmodulus.net',
+  host: '127.0.0.1',
+  port: 8080,
+  //hostname: 'trading-50789.onmodulus.net',
   path: '/post1',
   method: 'POST',
   dataType: 'json'

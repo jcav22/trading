@@ -1,8 +1,7 @@
 var http = require('http');
-var dispatcher = require('httpdispatcher'); // npm install httpdispatcher
-// Create a server and socket.io
+var dispatcher = require('httpdispatcher');
 var server = http.createServer(handleRequest);
-var socket = require('socket.io').listen(server); // npm install socket.io
+var socket = require('socket.io').listen(server);
 var mongoose = require('mongoose');
 //var toobusy = require('toobusy');
 
@@ -11,6 +10,7 @@ const PORT = process.env.PORT || 8080;
 var db = mongoose.connection;
 var Transaction, transactionSchema;
 
+// set up the database and model
 db.on( 'error', console.error );
 db.once( 'open', function() {
     console.log( 'connected to DB' );
@@ -21,7 +21,7 @@ db.once( 'open', function() {
         , amountSell: Number
         , amountBuy: Number
         , rate: Number
-        , timePlaced: String
+        , timePlaced: Date
         , originatingCountry: String
     });
 
@@ -29,6 +29,11 @@ db.once( 'open', function() {
 });
 
 mongoose.connect('mongodb://trading:1234@waffle.modulusmongo.net:27017/pat3oHid');
+
+// Start the server
+server.listen( PORT, function() {
+    console.log( "Server listening on: http://localhost:%s", PORT );
+});
 
 function handleRequest( request, response ) {
     // if ( toobusy() ) {
@@ -43,11 +48,6 @@ function handleRequest( request, response ) {
     }
     // }
 }
-
-// Start the server
-server.listen( PORT, function() {
-    console.log( "Server listening on: http://localhost:%s", PORT );
-});
 
 // POST data request
 dispatcher.onPost( "/post1", function( req, res ) {
@@ -70,7 +70,7 @@ dispatcher.onPost( "/post1", function( req, res ) {
                 , amountSell:           reqObject.amountSell
                 , amountBuy:            reqObject.amountBuy
                 , rate:                 reqObject.rate
-                , timePlaced:           reqObject.timePlaced
+                , timePlaced:           new Date(reqObject.timePlaced)
                 , originatingCountry:   reqObject.originatingCountry
             });
             
@@ -138,17 +138,33 @@ function messageProcessor( obj ) {
     }
 }
 
-socket.on('connection', function(socket) {
-    socket.on('getData', function(data) {
-        //console.log("get from the client");
-        socket.emit('message', JSON.stringify(global));
+socket.on( 'connection', function( socket ) {
+    socket.on( 'getData', function( data ) {        
+        socket.emit( 'message', JSON.stringify(global) );
+    });
+    socket.on( 'getLastTrans', function( data ) {
+        var lastRegs = [];
+        var q = Transaction.find().sort( '-date' ).limit( 5 );
+        
+        q.exec( function( err, posts ) {
+            var i;
+            for( i = 0; i < posts.length; i++ )
+                lastRegs.push( {
+                    date:           posts[i].timePlaced
+                    , exchange:     posts[i].currencyFrom + '/' + posts[i].currencyTo
+                    , amountSell:   posts[i].amountSell
+                    , rate:         posts[i].rate
+                } );
+            
+            socket.emit( 'lastTrans', JSON.stringify(lastRegs) );
+        });
     });
 });
 
 function isValidObj( obj ) {
-    return /^[a-zA-Z]{3}/.test(obj.currencyFrom) 
-            && /^[a-zA-Z]{3}/.test(obj.currencyTo) 
-            && /^[a-zA-Z]{2}/.test(obj.originatingCountry)
-            && !isNaN(parseFloat(obj['amountSell'])) && isFinite(obj['amountSell'])
-            && !isNaN(parseFloat(obj['amountBuy'])) && isFinite(obj['amountBuy']);
+    return  /^[a-zA-Z]{3}/.test( obj.currencyFrom ) 
+            && /^[a-zA-Z]{3}/.test( obj.currencyTo ) 
+            && /^[a-zA-Z]{2}/.test( obj.originatingCountry )
+            && !isNaN(parseFloat( obj['amountSell'] )) && isFinite( obj['amountSell'] )
+            && !isNaN(parseFloat( obj['amountBuy'] )) && isFinite( obj['amountBuy'] );
 }

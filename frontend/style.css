@@ -56,8 +56,35 @@ p {
 	float: right;
 }
 
-div {
-	/*border: 1px solid black;*/
+#lastTransactions {
+	width: 100%;
+	float: left;
+	margin: 10px 0 20px;
+}
+
+#lastTransactions > h3 {
+	border-bottom: 1px solid black;
+}
+
+.transaction {
+	width: 100%;
+	float: left;
+	padding: 2px 5px 5px;
+	margin: 0px 0 5px;
+	color: #fff;
+    background-color: #337ab7;
+    border-color: #337ab7;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+}
+
+.trans_data {
+	padding: 10px 15px;
+	color: #337ab7;
+    background-color: white;
+    border-top: 1px solid #ddd;
+    border-bottom-right-radius: 3px;
+    border-bottom-left-radius: 3px;
 }
 
 form {
